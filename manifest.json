@@ -1,0 +1,15 @@
+{
+  "name": "Kampung Sim-Sim Water Village",
+  "short_name": "Kampung SimSim",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a192f",
+  "theme_color": "#00bcd4",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
