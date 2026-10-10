@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kampung Sim-Sim: Water Village Manager</title>
+    <style>
+        :root {
+            --bg-primary: #0a192f;
+            --bg-card: rgba(16, 30, 54, 0.85);
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-sea: #00bcd4;
+            --accent-gold: #ffc107;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-wood: #8d6e63;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* HEADER & DASHBOARD */
+        header {
+            background: rgba(10, 25, 47, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .title-container h1 {
+            font-size: 1.2rem;
+            color: var(--accent-sea);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title-container span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        .resources-bar {
+            display: flex;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .resource-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-sea);
+            color: #000;
+            font-weight: bold;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #00acc1;
+        }
+
+        /* MAIN CONTENT AREA */
+        .main-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* GAME MAP AREA */
+        .map-viewport {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(180deg, #102a43 0%, #0d2035 100%);
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .water-grid {
+            position: relative;
+            width: 1000px;
+            height: 700px;
+            background-color: #0e3854;
+            background-image: 
+                radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(rgba(0, 188, 212, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 188, 212, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px, 40px 40px, 40px 40px;
+            border-radius: 12px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            border: 2px solid rgba(0, 188, 212, 0.2);
+            transition: all 0.5s ease;
+        }
+
+        .water-grid.low-tide {
+            background-color: #0b283d;
+        }
+
+        /* GRID TILES */
+        .grid-node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 1px dashed rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 4px;
+        }
+
+        .grid-node:hover {
+            border-color: var(--accent-sea);
+            background: rgba(0, 188, 212, 0.1);
+            transform: scale(1.02);
+            z-index: 2;
+        }
+
+        .grid-node.built {
+            border: 1px solid rgba(255,255,255,0.2);
+            background: var(--bg-card);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .grid-node .icon {
+            font-size: 1.8rem;
+            margin-bottom: 2px;
+        }
+
+        .grid-node .level-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: var(--accent-gold);
+            color: #000;
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
+        /* SIDEBAR / BUILD MENU */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--accent-sea);
+            border-bottom-color: var(--accent-sea);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .build-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .build-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-sea);
+        }
+
+        .build-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: transparent;
+        }
+
+        .build-card .b-icon {
+            font-size: 2rem;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .build-card .b-info {
+            flex: 1;
+        }
+
+        .build-card .b-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .build-card .b-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .build-card .b-cost {
+            display: flex;
+            gap: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* EVENT NOTIFICATION BANNER */
+        .event-banner {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--accent-gold);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 20;
+            transition: all 0.3s;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .event-banner.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* LOG PANEL */
+        .log-panel {
+            height: 120px;
+            background: rgba(0, 0, 0, 0.4);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 4px;
+        }
+
+        .log-entry {
+            color: var(--text-secondary);
+        }
+
+        .log-entry.highlight {
+            color: var(--accent-gold);
+        }
+
+        .log-entry.alert {
+            color: var(--accent-red);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            width: 360px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-body {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER DASHBOARD -->
+    <header>
+        <div class="title-container">
+            <h1>🏘️ Kampung Sim-Sim <span>Water Village Manager</span></h1>
+        </div>
+
+        <div class="resources-bar">
+            <div class="resource-item" title="Ringgit Malaysia">
+                💵 <span id="res-money">RM 1,000</span>
+            </div>
+            <div class="resource-item" title="Kayu Pancang (Wood)">
+                🪵 <span id="res-wood">50</span>
+            </div>
+            <div class="resource-item" title="Hasil Laut (Fish/Seafood)">
+                🐟 <span id="res-fish">20</span>
+            </div>
+            <div class="resource-item" title="Keharmonian Kampung">
+                💖 <span id="res-harmony">80%</span>
+            </div>
+            <div class="resource-item" title="Penarafan Pelancongan">
+                ⭐ <span id="res-rating">1.0</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="btn-audio">🔊 Bunyi: ON</button>
+            <button class="btn" id="btn-speed">⏩ 1x</button>
+            <button class="btn btn-primary" id="btn-save">💾 Simpan Game</button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME AREA -->
+    <div class="main-container">
+        
+        <!-- MAP VIEWPORT -->
+        <div class="map-viewport">
+            <div class="event-banner" id="event-banner">
+                <span id="event-icon">🌊</span>
+                <span id="event-text">Pasang Air Laut: Hasil tangkapan ikan meningkat!</span>
+            </div>
+
+            <div class="water-grid" id="grid-container">
+                <!-- Grid tiles spawned via JavaScript -->
+            </div>
+        </div>
+
+        <!-- SIDEBAR MENU -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchTab('build')">Bina</button>
+                <button class="tab-btn" onclick="switchTab('market')">Pasaran</button>
+                <button class="tab-btn" onclick="switchTab('achievements')">Pencapaian</button>
+            </div>
+
+            <div class="panel-content" id="panel-build">
+                <!-- Build Items injected via JS -->
+            </div>
+
+            <div class="panel-content" id="panel-market" style="display: none;">
+                <div class="build-card" onclick="tradeResource('sellFish')">
+                    <div class="b-icon">🐟</div>
+                    <div class="b-info">
+                        <div class="b-title">Jual Hasil Laut</div>
+                        <div class="b-desc">Jual 10 Hasil Laut ke Pasaran Sandakan</div>
+                        <div class="b-cost"><span style="color:var(--accent-green)">+RM 150</span></div>
+                    </div>
+                </div>
+                <div class="build-card" onclick="tradeResource('buyWood')">
+                    <div class="b-icon">🪵</div>
+                    <div class="b-info">
+                        <div class="b-title">Beli Kayu Pancang</div>
+                        <div class="b-desc">Beli 20 unit Kayu Belian/Pancang</div>
+                        <div class="b-cost"><span style="color:var(--accent-red)">-RM 100</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-content" id="panel-achievements" style="display: none;">
+                <div id="achievements-list">
+                    <!-- Achievements loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- EVENT LOG -->
+            <div class="log-panel" id="log-panel">
+                <div class="log-entry">Selamat datang ke Kampung Sim-Sim! Mulakan pembinaan jambatan dan jeti.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NODE ACTION MODAL -->
+    <div class="modal-overlay" id="node-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Nama Bangunan</h3>
+                <button class="btn" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <p>Tahap: <span id="modal-level">1</span></p>
+                <p>Pengeluaran: <span id="modal-prod">-</span></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="modal-btn-upgrade">Naik Taraf</button>
+                <button class="btn" style="color:var(--accent-red)" id="modal-btn-demolish">Roboh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- GAME DATA & STATE --- */
+        const gameState = {
+            money: 1000,
+            wood: 50,
+            fish: 20,
+            harmony: 80,
+            rating: 1.0,
+            speed: 1,
+            audioEnabled: true,
+            selectedBuildType: null,
+            selectedNodeId: null,
+            grid: Array(35).fill(null), // 7x5 Grid
+            achievements: {
+                firstBridge: false,
+                seafoodHub: false,
+                touristHeaven: false
+            }
+        };
+
+        // Building Definitions
+        const BUILDINGS = {
+            bridge: { name: "Jambatan Papan", icon: "🪵", costMoney: 50, costWood: 10, desc: "Laluan asas untuk menghubungkan binaan.", produce: "Akses", type: "infrastructure" },
+            house: { name: "Rumah Papan", icon: "🏠", costMoney: 150, costWood: 25, desc: "Kediaman penduduk atas air. Tambah keharmonian.", produce: "+1 Harmony/s", type: "residential" },
+            jetty: { name: "Jeti Nelayan", icon: "🛶", costMoney: 300, costWood: 40, desc: "Pusat tangkapan ikan & hasil laut.", produce: "+2 Fish/s", type: "industry" },
+            restaurant: { name: "Restoran Makanan Laut", icon: "🦀", costMoney: 600, costWood: 50, desc: "Tarik pelawat untuk menjana pendapatan.", produce: "+RM 25/s", type: "commercial" },
+            homestay: { name: "Homestay Air", icon: "🏨", costMoney: 1000, costWood: 80, desc: "Meningkatkan penarafan pelancongan Sandakan.", produce: "+0.1 Rating/s", type: "tourism" },
+            cleanup: { name: "Pusat Pembersihan Laut", icon: "🧹", costMoney: 400, costWood: 20, desc: "Kekalkan kebersihan air sekitar kampung.", produce: "+2 Harmony/s", type: "utility" }
+        };
+
+        /* --- AUDIO SYNTHESIZER (Web Audio API) --- */
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!gameState.audioEnabled) return;
+            if (!audioCtx) audioCtx = new AudioCtx();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'build') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'collect') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'event') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.25);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        /* --- INITIALIZATION --- */
+        function initGame() {
+            renderGrid();
+            renderBuildMenu();
+            renderAchievements();
+            loadGame();
+            
+            // Start Loop
+            setInterval(gameLoop, 1000);
+            setInterval(triggerRandomEvent, 25000); // Dynamic events
+        }
+
+        // Render Map Grid (7x5)
+        function renderGrid() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '';
+
+            const cols = 7;
+            const rows = 5;
+
+            for (let i = 0; i < cols * rows; i++) {
+                const node = document.createElement('div');
+                node.className = 'grid-node';
+                
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                
+                node.style.left = `${col * 135 + 30}px`;
+                node.style.top = `${row * 125 + 30}px`;
+
+                const data = gameState.grid[i];
+
+                if (data) {
+                    node.classList.add('built');
+                    node.innerHTML = `
+                        <span class="icon">${BUILDINGS[data.type].icon}</span>
+                        <span style="font-weight:600; font-size:0.7rem;">${BUILD
